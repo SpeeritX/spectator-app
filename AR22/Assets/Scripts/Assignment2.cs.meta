@@ -1,0 +1,12 @@
+fileFormatVersion: 2
+guid: ca73c1b2242c30a4982e7b09b5800e52
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - raycast: {fileID: 7498390280398757100, guid: da5dad8af699c024a86c5500b965bb73, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
