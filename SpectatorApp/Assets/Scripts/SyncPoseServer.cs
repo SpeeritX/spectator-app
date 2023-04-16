@@ -9,25 +9,29 @@ public class SyncPoseServer : SyncPose
 
     protected override void Start()
     {
-        Debug.Log("SyncPoseServer: Starting server");
         base.Start();
-
-        var error = StartBroadcasting(hostID, port);
-        if (error != NetworkError.Ok)
+    }
+    void Update()
+    {
+        if (Input.touchCount > 0)
         {
-            Debug.LogError($"SyncPoseServer: Couldn't start broadcasting because of {error}. Disabling the script");
-            enabled = false;
-            return;
+            print("Touch detected");
+            if (Input.GetTouch(0).phase == TouchPhase.Ended)
+            {
+                print("Touch Ended - start broadcasting");
+                var error = StartBroadcasting(hostID, port);
+                if (error != NetworkError.Ok)
+                {
+                    Debug.LogError($"SyncPoseServer: Couldn't start broadcasting because of {error}. Disabling the script");
+                    enabled = false;
+                    return;
+                }
+            }
         }
-        Debug.Log("SyncPoseServer: Starting broadcasting");
     }
 
     protected virtual void LateUpdate()
     {
-        if (transform.hasChanged)
-        {
-            Debug.Log("SyncPoseServer: Transform has changed");
-        }
         // Checking whether something has happened with the connection since the last frame
         if (CheckConnectionChanges() == INVALID_CONNECTION) return;
 
