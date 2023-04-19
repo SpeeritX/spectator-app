@@ -1,12 +1,17 @@
 ﻿using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.UI;
 
 public class SyncPoseServer : SyncPose
 {
+    [SerializeField]
+    private RawImage image;
+
 #pragma warning disable CS0618 // Type or member is obsolete
     protected static readonly int BROADCAST_INTERVAL = 1000; // ms
     private bool startedBroadcasting = false;
+    private int frameCount = 0;
 
     protected override void Start()
     {
@@ -20,6 +25,7 @@ public class SyncPoseServer : SyncPose
             if (Input.GetTouch(0).phase == TouchPhase.Ended && !startedBroadcasting)
             {
                 print("Touch Ended - start broadcasting");
+                Debug.Log($"SyncPoseServer: Starting broadcasting, host: {hostID}, port: {port}");
                 var error = StartBroadcasting(hostID, port);
                 startedBroadcasting = true;
                 if (error != NetworkError.Ok)
@@ -37,9 +43,11 @@ public class SyncPoseServer : SyncPose
         // Checking whether something has happened with the connection since the last frame
         if (CheckConnectionChanges() == INVALID_CONNECTION) return;
 
-        // Send postion and orientation over the network
-        if (transform.hasChanged)
+        frameCount++;
+        // Send position and orientation over the network
+        if (transform.hasChanged && frameCount >= 3)
         {
+            frameCount = 0;
             Debug.Log("SyncPoseServer: Transform has changed. Sending new pose");
             SendPose();
             transform.hasChanged = false;
@@ -68,12 +76,23 @@ public class SyncPoseServer : SyncPose
                 StartBroadcasting(hostID, port);
                 Debug.Log("SyncPoseServer: Connection lost. Restarting broadcasting");
                 break;
+            case NetworkEventType.DataEvent:
+                Debug.Log($"SyncPoseServer: Received data");
+                ShowImage(messageBuffer);
+                break;
             default:
                 Debug.LogError($"SyncPoseServer: Unknown network message type received, namely {eventType}");
                 break;
         }
 
         return сonnectionID;
+    }
+
+    private void ShowImage(byte[] imageBytes)
+    {
+        Texture2D texture = new Texture2D(256, 256);
+        texture.LoadImage(imageBytes);
+        image.texture = texture;
     }
 
     private bool SendPose()
