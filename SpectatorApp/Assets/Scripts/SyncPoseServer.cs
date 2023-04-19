@@ -6,6 +6,7 @@ public class SyncPoseServer : SyncPose
 {
 #pragma warning disable CS0618 // Type or member is obsolete
     protected static readonly int BROADCAST_INTERVAL = 1000; // ms
+    private bool startedBroadcasting = false;
 
     protected override void Start()
     {
@@ -16,10 +17,11 @@ public class SyncPoseServer : SyncPose
         if (Input.touchCount > 0)
         {
             print("Touch detected");
-            if (Input.GetTouch(0).phase == TouchPhase.Ended)
+            if (Input.GetTouch(0).phase == TouchPhase.Ended && !startedBroadcasting)
             {
                 print("Touch Ended - start broadcasting");
                 var error = StartBroadcasting(hostID, port);
+                startedBroadcasting = true;
                 if (error != NetworkError.Ok)
                 {
                     Debug.LogError($"SyncPoseServer: Couldn't start broadcasting because of {error}. Disabling the script");
