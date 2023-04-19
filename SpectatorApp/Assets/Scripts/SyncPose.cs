@@ -29,7 +29,7 @@ public class SyncPose : MonoBehaviour
 
     protected HostTopology topology;
 
-    protected readonly byte[] messageBuffer = new byte[19962];
+    protected readonly byte[] messageBuffer = new byte[30000];
     protected BinaryFormatter formatter = new BinaryFormatter();
 
     protected static readonly int MAX_NUMBER_OF_CONNECTIONS = 1;
@@ -44,7 +44,7 @@ public class SyncPose : MonoBehaviour
         GlobalConfig globalConfig = new GlobalConfig();
 
         // Set the maximum packet size (in bytes)
-        globalConfig.MaxPacketSize = 20000;
+        globalConfig.MaxPacketSize = 31000;
 
         // Apply the new configuration
         NetworkTransport.Init(globalConfig);
@@ -53,7 +53,7 @@ public class SyncPose : MonoBehaviour
         // one such that only the most recent message in the receive buffer will be delivered
         ConnectionConfig config = new ConnectionConfig();
         channelID = config.AddChannel(QosType.ReliableStateUpdate);
-        config.PacketSize = 20000; // This value is recommended by Unity documentation: https://docs.unity3d.com/ScriptReference/Networking.ConnectionConfig.PacketSize.html
+        config.PacketSize = 31000; // This value is recommended by Unity documentation: https://docs.unity3d.com/ScriptReference/Networking.ConnectionConfig.PacketSize.html
 
         // The thing is we don't need more than one connection
         topology = new HostTopology(config, MAX_NUMBER_OF_CONNECTIONS);
