@@ -2,6 +2,8 @@
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using System.Buffers.Binary;
+using System.Linq;
 
 public class SyncPoseServer : SyncPose
 {
@@ -12,6 +14,9 @@ public class SyncPoseServer : SyncPose
     protected static readonly int BROADCAST_INTERVAL = 1000; // ms
     private bool startedBroadcasting = false;
     private int frameCount = 0;
+    private int imageSize = 0;
+    private int imageBytesReceived = 0;
+    private byte[] imageBytes;
 
     protected override void Start()
     {
@@ -19,6 +24,7 @@ public class SyncPoseServer : SyncPose
     }
     void Update()
     {
+        // Debug.Log("SyncPoseServer: Update");
         if (Input.touchCount > 0)
         {
             print("Touch detected");
@@ -40,6 +46,7 @@ public class SyncPoseServer : SyncPose
 
     protected virtual void LateUpdate()
     {
+        // Debug.Log("SyncPoseServer: LateUpdate");
         // Checking whether something has happened with the connection since the last frame
         if (CheckConnectionChanges() == INVALID_CONNECTION) return;
 
@@ -56,6 +63,7 @@ public class SyncPoseServer : SyncPose
 
     private int CheckConnectionChanges()
     {
+        // Debug.Log("SyncPoseServer: Check connection changes");
         var eventType = NetworkTransport.Receive(out int outHostID, out int outConnectionID, out int outChannelID,
             messageBuffer, messageBuffer.Length, out int actualMessageLength, out byte error);
         switch (eventType)
@@ -77,8 +85,7 @@ public class SyncPoseServer : SyncPose
                 Debug.Log("SyncPoseServer: Connection lost. Restarting broadcasting");
                 break;
             case NetworkEventType.DataEvent:
-                Debug.Log($"SyncPoseServer: Received data");
-                ShowImage(messageBuffer);
+                ProcessMessage(messageBuffer);
                 break;
             default:
                 Debug.LogError($"SyncPoseServer: Unknown network message type received, namely {eventType}");
@@ -88,16 +95,35 @@ public class SyncPoseServer : SyncPose
         return сonnectionID;
     }
 
-    private void ShowImage(byte[] imageBytes)
+    private void ProcessMessage(byte[] bytes)
     {
-        Texture2D texture = new Texture2D(256, 256);
-        texture.LoadImage(imageBytes);
-        image.texture = texture;
+        if (imageSize == 0)
+        {
+            imageSize = BinaryPrimitives.ReadInt32LittleEndian(bytes.Take(4).ToArray());
+            imageBytes = new byte[imageSize];
+            imageBytesReceived = 0;
+        }
+        else
+        {
+            int bytesToReceive = imageSize - imageBytesReceived;
+            System.Buffer.BlockCopy(bytes, 0, imageBytes, imageBytesReceived, bytesToReceive > bytes.Length ? bytes.Length : bytesToReceive);
+            imageBytesReceived += bytes.Length;
+        }
+
+        if (imageBytesReceived >= imageSize)
+        {
+            imageBytesReceived = 0;
+            imageSize = 0;
+
+
+            Texture2D texture = new Texture2D(512, 512);
+            texture.LoadImage(imageBytes);
+            image.texture = texture;
+        }
     }
 
     private bool SendPose()
     {
-        Debug.Log($"Sending pose: {transform.position}, {transform.rotation}");
         int bufferSize;
         using (var stream = new MemoryStream(messageBuffer))
         {
@@ -109,7 +135,6 @@ public class SyncPoseServer : SyncPose
         NetworkTransport.Send(hostID, сonnectionID, channelID, messageBuffer, bufferSize, out byte error);
         if ((NetworkError)error != NetworkError.Ok)
         {
-            Debug.LogError($"SyncPoseServer: Couldn't send data over the network because of {(NetworkError)error}");
             return false;
         }
 

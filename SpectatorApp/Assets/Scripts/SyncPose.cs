@@ -22,6 +22,7 @@ public class SyncPose : MonoBehaviour
 #pragma warning disable CS0618 // Type or member is obsolete
     [SerializeField, Tooltip("The port number has to be the same for the server and the receiver")]
     protected int port = 54300;
+    protected const int MESSAGE_LENGTH = 30000;
 
     protected int channelID;
     protected int hostID;
@@ -29,7 +30,7 @@ public class SyncPose : MonoBehaviour
 
     protected HostTopology topology;
 
-    protected readonly byte[] messageBuffer = new byte[30000];
+    protected readonly byte[] messageBuffer = new byte[MESSAGE_LENGTH];
     protected BinaryFormatter formatter = new BinaryFormatter();
 
     protected static readonly int MAX_NUMBER_OF_CONNECTIONS = 1;
@@ -44,7 +45,7 @@ public class SyncPose : MonoBehaviour
         GlobalConfig globalConfig = new GlobalConfig();
 
         // Set the maximum packet size (in bytes)
-        globalConfig.MaxPacketSize = 31000;
+        globalConfig.MaxPacketSize = MESSAGE_LENGTH + 100;
 
         // Apply the new configuration
         NetworkTransport.Init(globalConfig);
@@ -52,8 +53,8 @@ public class SyncPose : MonoBehaviour
         // We will need only one channel between this server and a client, so we're creating
         // one such that only the most recent message in the receive buffer will be delivered
         ConnectionConfig config = new ConnectionConfig();
-        channelID = config.AddChannel(QosType.ReliableStateUpdate);
-        config.PacketSize = 31000; // This value is recommended by Unity documentation: https://docs.unity3d.com/ScriptReference/Networking.ConnectionConfig.PacketSize.html
+        channelID = config.AddChannel(QosType.ReliableSequenced);
+        config.PacketSize = MESSAGE_LENGTH + 100; // This value is recommended by Unity documentation: https://docs.unity3d.com/ScriptReference/Networking.ConnectionConfig.PacketSize.html
 
         // The thing is we don't need more than one connection
         topology = new HostTopology(config, MAX_NUMBER_OF_CONNECTIONS);
