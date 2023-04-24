@@ -102,19 +102,21 @@ public class SyncPoseServer : SyncPose
             imageSize = BinaryPrimitives.ReadInt32LittleEndian(bytes.Take(4).ToArray());
             imageBytes = new byte[imageSize];
             imageBytesReceived = 0;
+            int bytesToCopy = imageSize > (bytes.Length - 4) ? bytes.Length - 4 : imageSize;
+            System.Buffer.BlockCopy(bytes, 4, imageBytes, 0, bytesToCopy);
+            imageBytesReceived += bytesToCopy;
         }
         else
         {
             int bytesToReceive = imageSize - imageBytesReceived;
-            System.Buffer.BlockCopy(bytes, 0, imageBytes, imageBytesReceived, bytesToReceive > bytes.Length ? bytes.Length : bytesToReceive);
-            imageBytesReceived += bytes.Length;
+            int bytesToCopy = bytesToReceive > bytes.Length ? bytes.Length : bytesToReceive;
+            System.Buffer.BlockCopy(bytes, 0, imageBytes, imageBytesReceived, bytesToCopy);
+            imageBytesReceived += bytesToCopy;
         }
-
         if (imageBytesReceived >= imageSize)
         {
             imageBytesReceived = 0;
             imageSize = 0;
-
 
             Texture2D texture = new Texture2D(512, 512);
             texture.LoadImage(imageBytes);
