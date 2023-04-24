@@ -4,6 +4,7 @@ using UnityEngine.Networking;
 using UnityEngine.UI;
 using System.Buffers.Binary;
 using System.Linq;
+using System.Collections;
 
 public class SyncPoseServer : SyncPose
 {
@@ -13,6 +14,8 @@ public class SyncPoseServer : SyncPose
 #pragma warning disable CS0618 // Type or member is obsolete
     protected static readonly int BROADCAST_INTERVAL = 1000; // ms
     private bool startedBroadcasting = false;
+    private bool ready = true;
+    private int generatedImages = 0;
     private int frameCount = 0;
     private int imageSize = 0;
     private int imageBytesReceived = 0;
@@ -21,6 +24,7 @@ public class SyncPoseServer : SyncPose
     protected override void Start()
     {
         base.Start();
+        StartCoroutine(NetworkEventsListener());
     }
     void Update()
     {
@@ -46,53 +50,65 @@ public class SyncPoseServer : SyncPose
 
     protected virtual void LateUpdate()
     {
-        // Debug.Log("SyncPoseServer: LateUpdate");
-        // Checking whether something has happened with the connection since the last frame
-        if (CheckConnectionChanges() == INVALID_CONNECTION) return;
-
         frameCount++;
-        // Send position and orientation over the network
-        if (transform.hasChanged && frameCount >= 3)
+        if (frameCount >= 60)
         {
+            Debug.Log($"SyncPoseServer: FPS: {generatedImages}");
+            generatedImages = 0;
             frameCount = 0;
-            Debug.Log("SyncPoseServer: Transform has changed. Sending new pose");
-            SendPose();
-            transform.hasChanged = false;
         }
     }
 
-    private int CheckConnectionChanges()
+    IEnumerator NetworkEventsListener()
     {
-        // Debug.Log("SyncPoseServer: Check connection changes");
-        var eventType = NetworkTransport.Receive(out int outHostID, out int outConnectionID, out int outChannelID,
-            messageBuffer, messageBuffer.Length, out int actualMessageLength, out byte error);
-        switch (eventType)
+        Debug.Log("SyncPoseServer: NetworkEventsListener started");
+        int outHostID;
+        int outConnectionID;
+        int outChannelID;
+        int actualMessageLength;
+        byte error;
+        var eventType = NetworkTransport.Receive(out outHostID, out outConnectionID, out outChannelID,
+            messageBuffer, messageBuffer.Length, out actualMessageLength, out error);
+        while (true)
         {
-            case NetworkEventType.Nothing:
-                // Nothing has happend. That's a good thing :-)
-                break;
-            case NetworkEventType.ConnectEvent:
-                Debug.Log("SyncPoseServer: Client connected");
-                сonnectionID = outConnectionID;
-                StopBroadcasting();
-                break;
-            case NetworkEventType.DisconnectEvent:
-                Debug.Log("SyncPoseServer: Client disconnected");
-                сonnectionID = INVALID_CONNECTION;
+            switch (eventType)
+            {
+                case NetworkEventType.Nothing:
+                    yield return new WaitForSeconds(0.01f);
+                    break;
+                case NetworkEventType.ConnectEvent:
+                    Debug.Log("SyncPoseServer: Client connected");
+                    сonnectionID = outConnectionID;
+                    StopBroadcasting();
+                    SendPose();
+                    break;
+                case NetworkEventType.DisconnectEvent:
+                    Debug.Log("SyncPoseServer: Client disconnected");
+                    сonnectionID = INVALID_CONNECTION;
 
-                // Restarting broadcasting
-                StartBroadcasting(hostID, port);
-                Debug.Log("SyncPoseServer: Connection lost. Restarting broadcasting");
-                break;
-            case NetworkEventType.DataEvent:
-                ProcessMessage(messageBuffer);
-                break;
-            default:
-                Debug.LogError($"SyncPoseServer: Unknown network message type received, namely {eventType}");
-                break;
+                    // Restarting broadcasting
+                    StartBroadcasting(hostID, port);
+                    Debug.Log("SyncPoseServer: Connection lost. Restarting broadcasting");
+                    break;
+                case NetworkEventType.DataEvent:
+                    ProcessMessage(messageBuffer);
+                    break;
+                default:
+                    Debug.LogError($"SyncPoseServer: Unknown network message type received, namely {eventType}");
+                    break;
+            }
+
+            if (transform.hasChanged && ready)
+            {
+                ready = false;
+                // Debug.Log("SyncPoseServer: Transform has changed. Sending new pose");
+                SendPose();
+                transform.hasChanged = false;
+            }
+
+            eventType = NetworkTransport.Receive(out outHostID, out outConnectionID, out outChannelID,
+            messageBuffer, messageBuffer.Length, out actualMessageLength, out error);
         }
-
-        return сonnectionID;
     }
 
     private void ProcessMessage(byte[] bytes)
@@ -100,6 +116,7 @@ public class SyncPoseServer : SyncPose
         if (imageSize == 0)
         {
             imageSize = BinaryPrimitives.ReadInt32LittleEndian(bytes.Take(4).ToArray());
+            Debug.Log($"SyncPoseServer: Image size: {imageSize}");
             imageBytes = new byte[imageSize];
             imageBytesReceived = 0;
             int bytesToCopy = imageSize > (bytes.Length - 4) ? bytes.Length - 4 : imageSize;
@@ -117,8 +134,10 @@ public class SyncPoseServer : SyncPose
         {
             imageBytesReceived = 0;
             imageSize = 0;
-
-            Texture2D texture = new Texture2D(512, 512);
+            ready = true;
+            generatedImages++;
+            Destroy(image.texture);
+            Texture2D texture = new Texture2D(720, 1280);
             texture.LoadImage(imageBytes);
             image.texture = texture;
         }

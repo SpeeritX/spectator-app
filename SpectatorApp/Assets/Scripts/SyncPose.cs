@@ -22,7 +22,7 @@ public class SyncPose : MonoBehaviour
 #pragma warning disable CS0618 // Type or member is obsolete
     [SerializeField, Tooltip("The port number has to be the same for the server and the receiver")]
     protected int port = 54300;
-    protected const int MESSAGE_LENGTH = 30000;
+    protected const int MESSAGE_LENGTH = 10000;
 
     protected int channelID;
     protected int hostID;
