@@ -13,17 +13,16 @@ public class SyncPoseServer : SyncPose
     private bool startedBroadcasting = false;
     private int frameCount = 0;
 
+    public static bool isButtonClicked = false;
+
     protected override void Start()
     {
         base.Start();
     }
     void Update()
     {
-        if (Input.touchCount > 0)
+        if (isButtonClicked)
         {
-            print("Touch detected");
-            if (Input.GetTouch(0).phase == TouchPhase.Ended && !startedBroadcasting)
-            {
                 print("Touch Ended - start broadcasting");
                 Debug.Log($"SyncPoseServer: Starting broadcasting, host: {hostID}, port: {port}");
                 var error = StartBroadcasting(hostID, port);
@@ -34,7 +33,7 @@ public class SyncPoseServer : SyncPose
                     enabled = false;
                     return;
                 }
-            }
+            
         }
     }
 
@@ -70,8 +69,8 @@ public class SyncPoseServer : SyncPose
                 break;
             case NetworkEventType.DisconnectEvent:
                 Debug.Log("SyncPoseServer: Client disconnected");
+                isButtonClicked = false;
                 сonnectionID = INVALID_CONNECTION;
-
                 // Restarting broadcasting
                 StartBroadcasting(hostID, port);
                 Debug.Log("SyncPoseServer: Connection lost. Restarting broadcasting");
