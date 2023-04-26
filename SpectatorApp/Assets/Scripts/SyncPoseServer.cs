@@ -14,10 +14,12 @@ public class SyncPoseServer : SyncPose
 #pragma warning disable CS0618 // Type or member is obsolete
     protected static readonly int BROADCAST_INTERVAL = 1000; // ms
     private bool startedBroadcasting = false;
-    private bool ready = true;
+    private bool ready = false;
     private int generatedImages = 0;
     private int frameCount = 0;
     private int imageSize = 0;
+    private int imageWidth = 0;
+    private int imageHeight = 0;
     private int imageBytesReceived = 0;
     private byte[] imageBytes;
 
@@ -116,12 +118,15 @@ public class SyncPoseServer : SyncPose
         if (imageSize == 0)
         {
             imageSize = BinaryPrimitives.ReadInt32LittleEndian(bytes.Take(4).ToArray());
+            imageWidth = BinaryPrimitives.ReadInt32LittleEndian(bytes.Skip(4).Take(4).ToArray());
+            imageHeight = BinaryPrimitives.ReadInt32LittleEndian(bytes.Skip(8).Take(4).ToArray());
             Debug.Log($"SyncPoseServer: Image size: {imageSize}");
             imageBytes = new byte[imageSize];
             imageBytesReceived = 0;
-            int bytesToCopy = imageSize > (bytes.Length - 4) ? bytes.Length - 4 : imageSize;
-            System.Buffer.BlockCopy(bytes, 4, imageBytes, 0, bytesToCopy);
+            int bytesToCopy = imageSize > (bytes.Length - 12) ? bytes.Length - 12 : imageSize;
+            System.Buffer.BlockCopy(bytes, 12, imageBytes, 0, bytesToCopy);
             imageBytesReceived += bytesToCopy;
+            ready = true;
         }
         else
         {
@@ -134,10 +139,9 @@ public class SyncPoseServer : SyncPose
         {
             imageBytesReceived = 0;
             imageSize = 0;
-            ready = true;
             generatedImages++;
             Destroy(image.texture);
-            Texture2D texture = new Texture2D(720, 1280);
+            Texture2D texture = new Texture2D(imageWidth, imageHeight);
             texture.LoadImage(imageBytes);
             image.texture = texture;
         }
