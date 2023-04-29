@@ -15,6 +15,7 @@ public class SyncPoseServer : SyncPose
     protected static readonly int BROADCAST_INTERVAL = 1000; // ms
     private bool startedBroadcasting = false;
     private bool ready = false;
+    private bool synchronized = false;
     private int generatedImages = 0;
     private int frameCount = 0;
     private int imageSize = 0;
@@ -34,17 +35,25 @@ public class SyncPoseServer : SyncPose
         if (Input.touchCount > 0)
         {
             print("Touch detected");
-            if (Input.GetTouch(0).phase == TouchPhase.Ended && !startedBroadcasting)
+            if (Input.GetTouch(0).phase == TouchPhase.Ended)
             {
-                print("Touch Ended - start broadcasting");
-                Debug.Log($"SyncPoseServer: Starting broadcasting, host: {hostID}, port: {port}");
-                var error = StartBroadcasting(hostID, port);
-                startedBroadcasting = true;
-                if (error != NetworkError.Ok)
+                if (!startedBroadcasting)
                 {
-                    Debug.LogError($"SyncPoseServer: Couldn't start broadcasting because of {error}. Disabling the script");
-                    enabled = false;
-                    return;
+                    print("Touch Ended - start broadcasting");
+                    Debug.Log($"SyncPoseServer: Starting broadcasting, host: {hostID}, port: {port}");
+                    var error = StartBroadcasting(hostID, port);
+                    startedBroadcasting = true;
+                    if (error != NetworkError.Ok)
+                    {
+                        Debug.LogError($"SyncPoseServer: Couldn't start broadcasting because of {error}. Disabling the script");
+                        enabled = false;
+                        return;
+                    }
+                }
+                else if (!synchronized)
+                {
+                    synchronized = true;
+                    print("Touch Ended - send pose");
                 }
             }
         }
@@ -100,7 +109,7 @@ public class SyncPoseServer : SyncPose
                     break;
             }
 
-            if (transform.hasChanged && ready)
+            if (transform.hasChanged && ready && synchronized)
             {
                 ready = false;
                 // Debug.Log("SyncPoseServer: Transform has changed. Sending new pose");
