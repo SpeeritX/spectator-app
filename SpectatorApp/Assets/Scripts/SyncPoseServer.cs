@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using System.Buffers.Binary;
 using System.Linq;
 using System.Collections;
+using System;
 
 public class SyncPoseServer : SyncPose
 {
@@ -13,6 +14,15 @@ public class SyncPoseServer : SyncPose
 
 #pragma warning disable CS0618 // Type or member is obsolete
     protected static readonly int BROADCAST_INTERVAL = 1000; // ms
+
+    [SerializeField]
+    private TMPro.TextMeshProUGUI distanceText;
+    [SerializeField]
+    private TMPro.TextMeshProUGUI distanceText2;
+    [SerializeField]
+    private Image distanceImage;
+    private const float MAX_DISTANCE = 1.5f;
+    private const float MIN_DISTANCE = 1f;
     private bool startedBroadcasting = false;
     private bool ready = false;
     private bool synchronized = false;
@@ -129,11 +139,13 @@ public class SyncPoseServer : SyncPose
             imageSize = BinaryPrimitives.ReadInt32LittleEndian(bytes.Take(4).ToArray());
             imageWidth = BinaryPrimitives.ReadInt32LittleEndian(bytes.Skip(4).Take(4).ToArray());
             imageHeight = BinaryPrimitives.ReadInt32LittleEndian(bytes.Skip(8).Take(4).ToArray());
+            float phoneDistance = BitConverter.ToSingle(bytes.Skip(12).Take(4).ToArray(), 0);
+            DisplayDistance(phoneDistance);
             Debug.Log($"SyncPoseServer: Image size: {imageSize}");
             imageBytes = new byte[imageSize];
             imageBytesReceived = 0;
-            int bytesToCopy = imageSize > (bytes.Length - 12) ? bytes.Length - 12 : imageSize;
-            System.Buffer.BlockCopy(bytes, 12, imageBytes, 0, bytesToCopy);
+            int bytesToCopy = imageSize > (bytes.Length - 16) ? bytes.Length - 16 : imageSize;
+            System.Buffer.BlockCopy(bytes, 16, imageBytes, 0, bytesToCopy);
             imageBytesReceived += bytesToCopy;
             ready = true;
         }
@@ -153,6 +165,29 @@ public class SyncPoseServer : SyncPose
             Texture2D texture = new Texture2D(imageWidth, imageHeight);
             texture.LoadImage(imageBytes);
             image.texture = texture;
+        }
+    }
+
+    private void DisplayDistance(float distance)
+    {
+        string distanceString = distance.ToString("0.00");
+        distanceText.text = $"Distance: {distanceString}m (expected: {MIN_DISTANCE}m - {MAX_DISTANCE}m)";
+        if (distance > MIN_DISTANCE && distance < MAX_DISTANCE)
+        {
+            distanceImage.color = Color.green;
+            distanceText2.text = "";
+        }
+        else
+        {
+            distanceImage.color = Color.red;
+            if (distance < MIN_DISTANCE)
+            {
+                distanceText2.text = $"You are too close";
+            }
+            else
+            {
+                distanceText2.text = $"You are too far";
+            }
         }
     }
 
