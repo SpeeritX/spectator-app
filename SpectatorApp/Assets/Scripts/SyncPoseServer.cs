@@ -35,7 +35,6 @@ public class SyncPoseServer : SyncPose
     private byte[] imageBytes;
 
     public static bool isButtonClicked = false;
-    public static bool isSecondButtonClicked = false;
     public static bool isFirstPhaseDone = false;
     public static bool isSecondPhaseDone = false;
 
@@ -49,10 +48,6 @@ public class SyncPoseServer : SyncPose
         // Debug.Log("SyncPoseServer: Update");
         if (isButtonClicked)
         {
-            if (isFirstPhaseDone){
-                print("First synch phase done");
-                isSecondPhaseDone = true;
-            }
             print("Touch detected");
                 if (!startedBroadcasting)
                 {
@@ -70,6 +65,10 @@ public class SyncPoseServer : SyncPose
                 else if (!synchronized)
                 {
                     synchronized = true;
+                    if (isFirstPhaseDone){
+                    	print("First synch phase done");
+                        isSecondPhaseDone = true;
+                    }
                     print("Touch Ended - send pose");
                 }
             isButtonClicked = false;
@@ -115,6 +114,8 @@ public class SyncPoseServer : SyncPose
                     Debug.Log("SyncPoseServer: Client disconnected");
                     сonnectionID = INVALID_CONNECTION;
                     isButtonClicked=false;
+                    isFirstPhaseDone=false;
+                    isSecondPhaseDone=false;
 
                     // Restarting broadcasting
                     StartBroadcasting(hostID, port);
