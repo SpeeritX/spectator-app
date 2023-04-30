@@ -34,6 +34,11 @@ public class SyncPoseServer : SyncPose
     private int imageBytesReceived = 0;
     private byte[] imageBytes;
 
+    public static bool isButtonClicked = false;
+    public static bool isSecondButtonClicked = false;
+    public static bool isFirstPhaseDone = false;
+    public static bool isSecondPhaseDone = false;
+
     protected override void Start()
     {
         base.Start();
@@ -42,11 +47,13 @@ public class SyncPoseServer : SyncPose
     void Update()
     {
         // Debug.Log("SyncPoseServer: Update");
-        if (Input.touchCount > 0)
+        if (isButtonClicked)
         {
+            if (isFirstPhaseDone){
+                print("First synch phase done");
+                isSecondPhaseDone = true;
+            }
             print("Touch detected");
-            if (Input.GetTouch(0).phase == TouchPhase.Ended)
-            {
                 if (!startedBroadcasting)
                 {
                     print("Touch Ended - start broadcasting");
@@ -65,7 +72,7 @@ public class SyncPoseServer : SyncPose
                     synchronized = true;
                     print("Touch Ended - send pose");
                 }
-            }
+            isButtonClicked = false;
         }
     }
 
@@ -100,12 +107,14 @@ public class SyncPoseServer : SyncPose
                 case NetworkEventType.ConnectEvent:
                     Debug.Log("SyncPoseServer: Client connected");
                     сonnectionID = outConnectionID;
+                    isFirstPhaseDone = true;
                     StopBroadcasting();
                     SendPose();
                     break;
                 case NetworkEventType.DisconnectEvent:
                     Debug.Log("SyncPoseServer: Client disconnected");
                     сonnectionID = INVALID_CONNECTION;
+                    isButtonClicked=false;
 
                     // Restarting broadcasting
                     StartBroadcasting(hostID, port);
